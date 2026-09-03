@@ -1,12 +1,35 @@
+```toml
 name = "bappeda-smart-office-edge"
-main = "src/index.js"
-compatibility_date = "2024-03-01"
+main = "src/worker.js"
+compatibility_date = "2026-09-03"
 
 [vars]
 ENVIRONMENT = "production"
+
+GITHUB_OWNER = "willydozan"
+
 SUPABASE_URL = "https://your-supabase-project.supabase.co"
 
-# Secrets required (set via wrangler secret put):
-# SUPABASE_SERVICE_ROLE_KEY
-# TELEGRAM_BOT_TOKEN
-# GOOGLE_SERVICE_ACCOUNT_JSON
+AGENT_MODEL_PRIMARY = "gpt-5.6-luna"
+
+AGENT_GEMINI_MODEL_PRIMARY = "gemini-2.5-flash"
+
+AGENT_GEMINI_MODEL_FALLBACK = "gemini-2.5-flash-lite"
+
+AGENT_MAX_ITERATIONS = "8"
+
+RATE_LIMIT_PER_MINUTE = "20"
+
+[[kv_namespaces]]
+binding = "CHAT_MEMORY"
+id = "cc5075b1afe14520845cf052409c2a52"
+
+# Secrets:
+# wrangler secret put TELEGRAM_BOT_TOKEN
+# wrangler secret put ALLOWED_TELEGRAM_ID
+# wrangler secret put TELEGRAM_ADMIN_CHAT_ID
+# wrangler secret put GEMINI_API_KEY
+# wrangler secret put OPENAI_API_KEY
+# wrangler secret put GITHUB_TOKEN
+# wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+```
