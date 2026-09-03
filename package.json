@@ -1,0 +1,16 @@
+{
+  "name": "bappeda-smart-office",
+  "version": "1.0.0",
+  "description": "Smart Office Bappeda & Litbang Terintegrasi - Edge Computing & Supabase Architecture",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.8"
+  },
+  "devDependencies": {
+    "wrangler": "^3.111.0"
+  }
+}
