@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Office Bappeda & Litbang Terintegrasi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-blue-900 text-white shadow-md">
+            <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+                <h1 class="text-xl font-bold">Smart Office Bappeda & Litbang</h1>
+                <nav class="space-x-4">
+                    <a href="#layanan" class="hover:text-blue-200">Permohonan Riset</a>
+                    <a href="#surat" class="hover:text-blue-200">Surat Masuk</a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-6 py-8 flex-grow grid md:grid-cols-2 gap-8">
+            <!-- Form Permohonan Layanan -->
+            <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-semibold mb-4 text-blue-900">Form Permohonan Layanan / Riset</h2>
+                <form id="formRiset" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Nama Pemohon</label>
+                        <input type="text" id="nama_pemohon" required class="w-full border rounded-lg p-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Instansi / Universitas</label>
+                        <input type="text" id="instansi" required class="w-full border rounded-lg p-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Jenis Layanan</label>
+                        <select id="jenis_layanan" class="w-full border rounded-lg p-2 text-sm">
+                            <option value="Riset / Penelitian">Riset / Penelitian</option>
+                            <option value="Konsultasi RKPD">Konsultasi RKPD</option>
+                            <option value="Magang / PKL">Magang / PKL</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Perihal / Judul</label>
+                        <textarea id="perihal" rows="3" required class="w-full border rounded-lg p-2 text-sm"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Email</label>
+                            <input type="email" id="email" required class="w-full border rounded-lg p-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">No. WhatsApp / HP</label>
+                            <input type="text" id="no_hp" required class="w-full border rounded-lg p-2 text-sm">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-900 text-white py-2 rounded-lg font-semibold hover:bg-blue-800 transition">Kirim Permohonan</button>
+                </form>
+                <div id="responseMsg" class="mt-4 text-sm font-medium"></div>
+            </section>
+
+            <!-- Informasi & Status -->
+            <section class="space-y-6">
+                <div class="bg-blue-50 border border-blue-200 p-6 rounded-xl">
+                    <h3 class="font-bold text-blue-900 mb-2">Informasi Sistem Terintegrasi</h3>
+                    <p class="text-sm text-blue-800 leading-relaxed">
+                        Sistem ini terhubung langsung dengan Cloudflare Edge Network, Supabase Database, dan Bot Telegram Pengelola Bappeda & Litbang untuk mempercepat proses perizinan dan disposisi naskah dinas.
+                    </p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-slate-800 text-white text-center py-4 text-sm">
+            &copy; 2025 Bappeda & Litbang Kabupaten / Kota. All rights reserved.
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('formRiset').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                nama_pemohon: document.getElementById('nama_pemohon').value,
+                instansi: document.getElementById('instansi').value,
+                jenis_layanan: document.getElementById('jenis_layanan').value,
+                perihal: document.getElementById('perihal').value,
+                email: document.getElementById('email').value,
+                no_hp: document.getElementById('no_hp').value,
+            };
+
+            const msgEl = document.getElementById('responseMsg');
+            msgEl.textContent = 'Mengirim permohonan...';
+            msgEl.className = 'mt-4 text-sm font-medium text-slate-600';
+
+            try {
+                const res = await fetch('/api/public/permohonan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    msgEl.textContent = 'Permohonan berhasil dikirim dan diteruskan ke sistem pengelola!';
+                    msgEl.className = 'mt-4 text-sm font-medium text-green-600';
+                    document.getElementById('formRiset').reset();
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (err) {
+                msgEl.textContent = 'Gagal mengirim: ' + err.message;
+                msgEl.className = 'mt-4 text-sm font-medium text-red-600';
+            }
+        });
+    </script>
+</body>
+</html>
