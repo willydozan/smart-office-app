@@ -32,6 +32,26 @@ async function sendTelegramNotification(token, chatId, message, replyMarkup = nu
   }
 }
 
+// Helper: Generate Ticket Number (e.g., REQ-20250225-0001)
+function generateTicketNumber() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  return `REQ-${year}${month}${day}-${randomNum}`;
+}
+
+// Helper: Map frontend enum values to PostgreSQL ENUM values
+function mapJenisLayanan(val) {
+  const mapping = {
+    'Riset / Penelitian': 'penelitian_riset',
+    'Magang / PKL': 'magang_pkl',
+    'Konsultasi RKPD': 'konsultasi_rkpd'
+  };
+  return mapping[val] || 'penelitian_riset';
+}
+
 // Health Check
 app.get('/api/health', (c) => {
   return c.json({ status: 'ok', service: 'Smart Office Bappeda Edge API', timestamp: new Date().toISOString() });
@@ -43,9 +63,20 @@ app.post('/api/public/permohonan', async (c) => {
     const body = await c.req.json();
     const { nama_pemohon, instansi, jenis_layanan, perihal, email, no_hp } = body;
     
-    // Simpan ke Supabase via REST API
+    const nomor_tiket = generateTicketNumber();
+    const dbJenisLayanan = mapJenisLayanan(jenis_layanan);
+    
     const supabaseUrl = c.env.SUPABASE_URL;
     const supabaseKey = c.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    const payload = {
+      nomor_tiket,
+      nama_pemohon,
+      instansi,
+      jenis_layanan: dbJenisLayanan,
+      judul_keperluan: perihal,
+      status: 'pending'
+    };
 
     const res = await fetch(`${supabaseUrl}/rest/v1/permohonan_layanan_publik`, {
       method: 'POST',
@@ -55,15 +86,17 @@ app.post('/api/public/permohonan', async (c) => {
         'Authorization': `Bearer ${supabaseKey}`,
         'Prefer': 'return=representation'
       },
-      body: JSON.stringify({ nama_pemohon, instansi, jenis_layanan, perihal, email, no_hp, status: 'PENDING' })
+      body: JSON.stringify(payload)
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(JSON.stringify(data));
+    if (!res.ok) throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
+
+    const ticket = Array.isArray(data) ? data[0] : data;
+    if (!ticket) throw new Error('Failed to insert permohonan record');
 
     // Kirim notifikasi Telegram ke Admin/Kasi terkait
-    const ticket = data[0];
-    const msg = `📥 *PERMOHONAN LAYANAN BARU*\n\n*ID:* ${ticket.id}\n*Nama:* ${nama_pemohon}\n*Instansi:* ${instansi}\n*Jenis:* ${jenis_layanan}\n*Perihal:* ${perihal}`;
+    const msg = `📥 *PERMOHONAN LAYANAN BARU*\n\n*Tiket:* ${nomor_tiket}\n*Nama:* ${nama_pemohon}\n*Instansi:* ${instansi}\n*Jenis:* ${jenis_layanan}\n*Keperluan:* ${perihal}`;
     
     await sendTelegramNotification(c.env.TELEGRAM_BOT_TOKEN, c.env.TELEGRAM_ADMIN_CHAT_ID, msg, {
       inline_keyboard: [
@@ -96,14 +129,14 @@ app.post('/api/surat/masuk', async (c) => {
         'Authorization': `Bearer ${supabaseKey}`,
         'Prefer': 'return=representation'
       },
-      body: JSON.stringify({ nomor_surat, asal_surat, perihal, tanggal_surat, sifat })
+      body: JSON.stringify({ nomor_surat, asal_surat, perihal, tanggal_surat, sifat_surat: sifat || 'Biasa' })
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(JSON.stringify(data));
+    if (!res.ok) throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
 
-    const surat = data[0];
-    const msg = `✉️ *SURAT MASUK BARU*\n\n*Nomor:* ${nomor_surat}\n*Asal:* ${asal_surat}\n*Perihal:* ${perihal}\n*Sifat:* ${sifat}`;
+    const surat = Array.isArray(data) ? data[0] : data;
+    const msg = `✉️ *SURAT MASUK BARU*\n\n*Nomor:* ${nomor_surat}\n*Asal:* ${asal_surat}\n*Perihal:* ${perihal}\n*Sifat:* ${sifat || 'Biasa'}`;
     await sendTelegramNotification(c.env.TELEGRAM_BOT_TOKEN, c.env.TELEGRAM_ADMIN_CHAT_ID, msg);
 
     return c.json({ success: true, message: 'Surat masuk tercatat', data: surat });
@@ -124,17 +157,23 @@ app.post('/api/telegram/webhook', async (c) => {
       const supabaseUrl = c.env.SUPABASE_URL;
       const supabaseKey = c.env.SUPABASE_SERVICE_ROLE_KEY;
 
-      const newStatus = action === 'approve' ? 'DISETUJUI' : 'DITOLAK';
+      const newStatus = action === 'approve' ? 'diverifikasi' : 'ditolak';
 
-      await fetch(`${supabaseUrl}/rest/v1/permohonan_layanan_publik?id=eq.${id}`, {
+      const res = await fetch(`${supabaseUrl}/rest/v1/permohonan_layanan_publik?id=eq.${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'return=representation'
         },
         body: JSON.stringify({ status: newStatus })
       });
+
+      if (!res.ok) {
+        const errData = await res.text();
+        console.error('Supabase update error:', errData);
+      }
 
       // Balas callback query Telegram
       await fetch(`https://api.telegram.org/bot${c.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
