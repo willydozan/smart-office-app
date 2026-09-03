@@ -1,9 +1,12 @@
-name = "bappeda-smart-office"
+name = "bappeda-smart-office-edge"
 main = "src/index.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-03-01"
 
 [vars]
 ENVIRONMENT = "production"
-TELEGRAM_CHAT_ID = ""
-SUPABASE_URL = ""
-# SUPABASE_SERVICE_ROLE_KEY and TELEGRAM_BOT_TOKEN should be set via wrangler secret put
+SUPABASE_URL = "https://your-supabase-project.supabase.co"
+
+# Secrets required (set via wrangler secret put):
+# SUPABASE_SERVICE_ROLE_KEY
+# TELEGRAM_BOT_TOKEN
+# GOOGLE_SERVICE_ACCOUNT_JSON
